@@ -5,6 +5,7 @@ import logging
 import uuid
 import httpx
 import asyncio
+import requests
 from quart import (
     Blueprint,
     Quart,
@@ -404,14 +405,42 @@ async def conversation_internal(request_body, request_headers):
             return jsonify({"error": str(ex)}), 500
 
 
+# @bp.route("/conversation", methods=["POST"])
+# async def conversation():
+#     if not request.is_json:
+#         return jsonify({"error": "request must be json"}), 415
+#     request_json = await request.get_json()
+
+#     return await conversation_internal(request_json, request.headers)
+
+from databricks.sdk import WorkspaceClient
+
 @bp.route("/conversation", methods=["POST"])
 async def conversation():
-    if not request.is_json:
-        return jsonify({"error": "request must be json"}), 415
-    request_json = await request.get_json()
+    try:
+        if not request.is_json:
+            return jsonify({"error": "request must be json"}), 415
+        databricksClient = WorkspaceClient()
+        databricksToken = databricksClient.tokens.create().token_value
+        request_json = await request.get_json()
+        # Return only the last message
+        request_json["messages"] = request_json["messages"][-1:]
+        reponse = call_model(databricksToken, request_json)
+        return reponse
+    except Exception as e:
+        logging.exception("Exception in /conversation")
+        return jsonify({"error": str(e)}), 500
 
-    return await conversation_internal(request_json, request.headers)
-
+def call_model(token, request_json):
+    url = app_settings.databricks.url
+    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+    response = requests.request(method='POST', headers=headers, url=url, data=json.dumps(request_json))
+    if response.status_code != 200:
+        raise Exception(f'Request failed with status {response.status_code}, {response.text}')    
+    response_json = response.json()
+    # Wrap the messages in an array
+    response_json["choices"][0]["messages"] = [ response_json["choices"][0]["message"] ];
+    return response_json
 
 @bp.route("/frontend_settings", methods=["GET"])
 def get_frontend_settings():

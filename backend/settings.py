@@ -667,6 +667,29 @@ class _AzureSqlServerSettings(BaseSettings, DatasourcePayloadConstructor):
             "parameters": parameters
         }
     
+class _DatabricksSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="DATABRICKS_",
+        env_file=DOTENV_PATH,
+        extra="ignore",
+        env_ignore_empty=True
+    )
+    _type: Literal["databricks"] = PrivateAttr(default="databricks")
+    
+    url: str
+    
+    def construct_payload_configuration(
+        self,
+        *args,
+        **kwargs
+    ):
+        parameters = self.model_dump(exclude_none=True, by_alias=True)
+        parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        
+        return {
+            "type": self._type,
+            "parameters": parameters
+        }    
 
 class _MongoDbSettings(BaseSettings, DatasourcePayloadConstructor):
     model_config = SettingsConfigDict(
@@ -763,6 +786,7 @@ class _AppSettings(BaseModel):
     azure_openai: _AzureOpenAISettings = _AzureOpenAISettings()
     search: _SearchCommonSettings = _SearchCommonSettings()
     ui: Optional[_UiSettings] = _UiSettings()
+    databricks: _DatabricksSettings = _DatabricksSettings()
     
     # Constructed properties
     chat_history: Optional[_ChatHistorySettings] = None
