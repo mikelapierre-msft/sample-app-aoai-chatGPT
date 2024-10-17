@@ -677,6 +677,7 @@ class _DatabricksSettings(BaseSettings):
     _type: Literal["databricks"] = PrivateAttr(default="databricks")
     
     url: str
+    api_key: str
     
     def construct_payload_configuration(
         self,

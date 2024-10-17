@@ -413,28 +413,25 @@ async def conversation_internal(request_body, request_headers):
 
 #     return await conversation_internal(request_json, request.headers)
 
-from databricks.sdk import WorkspaceClient
+#from databricks.sdk import WorkspaceClient
 
 @bp.route("/conversation", methods=["POST"])
 async def conversation():
     try:
         if not request.is_json:
             return jsonify({"error": "request must be json"}), 415
-        logging.getLogger('databricks.sdk').setLevel(logging.DEBUG)
-        databricksClient = WorkspaceClient()
-        databricksToken = databricksClient.tokens.create().token_value
         request_json = await request.get_json()
         # Return only the last message
         request_json["messages"] = request_json["messages"][-1:]
-        reponse = call_model(databricksToken, request_json)
+        reponse = call_model(request_json)
         return reponse
     except Exception as e:
         logging.exception("Exception in /conversation")
         return jsonify({"error": str(e)}), 500
 
-def call_model(token, request_json):
+def call_model(request_json):
     url = app_settings.databricks.url
-    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+    headers = {'Ocp-Apim-Subscription-Key': app_settings.databricks.api_key, 'Content-Type': 'application/json'}
     response = requests.request(method='POST', headers=headers, url=url, data=json.dumps(request_json))
     if response.status_code != 200:
         raise Exception(f'Request failed with status {response.status_code}, {response.text}')    
