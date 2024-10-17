@@ -420,6 +420,7 @@ async def conversation():
     try:
         if not request.is_json:
             return jsonify({"error": "request must be json"}), 415
+        logging.getLogger('databricks.sdk').setLevel(logging.DEBUG)
         databricksClient = WorkspaceClient()
         databricksToken = databricksClient.tokens.create().token_value
         request_json = await request.get_json()
