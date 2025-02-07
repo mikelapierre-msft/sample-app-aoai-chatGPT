@@ -36,6 +36,7 @@ from backend.utils import (
     convert_to_pf_format,
     format_pf_non_streaming_response,
 )
+from azure.identity import DefaultAzureCredential
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -431,7 +432,12 @@ async def conversation():
 
 def call_model(request_json):
     url = app_settings.databricks.url
-    headers = {'Ocp-Apim-Subscription-Key': app_settings.databricks.api_key, 'Content-Type': 'application/json'}
+    if app_settings.databricks.use_managed_identity:
+        credential = DefaultAzureCredential()
+        token = credential.get_token("2ff814a6-3304-4ab8-85cb-cd0e6f879c1d")
+        headers = {'Authorization': f"Bearer {token.token}", 'Content-Type': 'application/json'}
+    else:
+        headers = {'Ocp-Apim-Subscription-Key': app_settings.databricks.api_key, 'Content-Type': 'application/json'}
     response = requests.request(method='POST', headers=headers, url=url, data=json.dumps(request_json))
     if response.status_code != 200:
         raise Exception(f'Request failed with status {response.status_code}, {response.text}')    
